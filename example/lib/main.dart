@@ -22,12 +22,27 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _controller = JyFaceCompareViewController();
+    _controller.onInitSdkResult.listen((initResult) {
+      print("onInitSdkResult");
+      if (initResult.result) {
+        Future.delayed(Duration(milliseconds: 500), () {
+          _controller.startPreview();
+        }).then((value) {
+          _controller.startPreview();
+        });
+      } else {
+        setState(() {
+          _currentState = "人脸比对初始化失败.";
+        });
+      }
+    });
     _controller.onCameraOpened.listen((_) {
       print("onCameraOpened");
       setState(() {
         _currentState = "相机已打开";
       });
-      _controller.startCompare();
+      //开始比对，传入原始图像数据和相似度阀值
+      //_controller.startCompare(bitmapData, 80);
     });
     _controller.onCameraClosed.listen((_) {
       print("onCameraClosed");
@@ -60,11 +75,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   void _onJyFaceCompareViewCreated() {
     print("_onJyFaceCompareViewCreated");
-    Future.delayed(Duration(seconds: 1), () {
-      _controller.startPreview();
-    }).then((value) {
-      _controller.startPreview();
-    });
+    _controller.initFaceSdk();
   }
 
   @override
@@ -109,7 +120,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   Padding(
                     child: OutlineButton(
                       onPressed: () {
-                        _controller.startCompare();
+                        //开始比对，传入原始图像数据和相似度阀值
+                        //_controller.startCompare(bitmapData, 80);
                       },
                       child: Text("再次比对"),
                     ),

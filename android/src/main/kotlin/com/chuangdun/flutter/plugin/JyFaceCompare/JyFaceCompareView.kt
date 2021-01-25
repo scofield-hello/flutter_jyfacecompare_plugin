@@ -2,6 +2,7 @@ package com.chuangdun.flutter.plugin.JyFaceCompare
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Message
@@ -9,7 +10,6 @@ import android.util.Log
 import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import com.Interface.onFacecompareAutnResult
 import com.camera.CameraConstant
 import com.camera.JYCamera
@@ -21,7 +21,11 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.InputStream
+import java.lang.ref.SoftReference
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -33,7 +37,9 @@ private const val EVENT_PREVIEW_STOP = 2
 private const val EVENT_CAMERA_CLOSED = 3
 private const val EVENT_COMPARE_START = 4
 private const val EVENT_COMPARE_RESULT = 5
+private const val EVENT_INIT_RESULT = 6
 private const val TAG = "JyFaceCompareView"
+
 class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger, id: Int, createParams: Any) : PlatformView,
         MethodChannel.MethodCallHandler, EventChannel.StreamHandler{
 
@@ -52,6 +58,8 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
     private val subThreadHandler:Handler
     private var eventSink: EventChannel.EventSink? = null
     private val mCamera: JYCamera
+    private var srcBitmap: Bitmap? = null
+    private var threshold: Int = 80
     init {
         textureView.layoutParams = ViewGroup.LayoutParams(352, 288)
         methodChannel.setMethodCallHandler(this)
@@ -59,7 +67,6 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
         handlerThread.start()
         subThreadHandler = initSubThreadHandler()
         mCamera = initCamera()
-        initFaceCompare()
     }
 
     private fun initSubThreadHandler():Handler{
@@ -103,7 +110,9 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                                     "event" to EVENT_PREVIEW
                             ))
                         }
-                        mBlockingQueue.offer(CompareTask(bitmap, bitmap))
+                        srcBitmap?.let {
+                            mBlockingQueue.offer(CompareTask(it, bitmap))
+                        }
                     }
 
                     override fun onClosedCamera() {
@@ -127,13 +136,15 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                 .build()
     }
 
-    private fun initFaceCompare():Unit{
+    private fun initFaceSdk(){
         Facecompare.getInstance().faceInit(context,
                 onFacecompareAutnResult { result: Boolean, msg: String ->
-                    Log.e(TAG, "人脸比对初始化结果:$result, $msg")
-                    uiHandler.post {
-                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                    }
+                    Log.i(TAG, "人脸比对初始化结果:$result, $msg")
+                    uiHandler.post {  eventSink?.success(mapOf(
+                            "event" to EVENT_INIT_RESULT,
+                            "result" to result,
+                            "msg" to msg
+                    ))}
                 })
     }
 
@@ -151,7 +162,7 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                             subThreadHandler.sendEmptyMessage(EVENT_COMPARE_START)
                         }
                         override fun onSuccess(result: CompareResult?) {
-                            if (result!!.similar < 85){
+                            if (result!!.similar < threshold){
                                 subThreadHandler.sendEmptyMessage(EVENT_COMPARE_START)
                             }else{
                                 val outputStream = ByteArrayOutputStream()
@@ -187,11 +198,18 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
 
     override fun dispose() {
         Log.i(TAG, "JyFaceCompareView:dispose")
+        if (!service.isTerminated){
+            service.shutdownNow()
+        }
+        handlerThread.quit()
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        Log.i(TAG, "JyFaceCompareView:onMethodCall")
+        Log.i(TAG, "JyFaceCompareView:onMethodCall:${call.method}")
         when(call.method){
+            "initFaceSdk" -> {
+                initFaceSdk()
+            }
             "startPreview" -> {
                 mCamera.doStartPreview(1, textureView)
             }
@@ -202,12 +220,33 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                 mCamera.doStopCamera()
             }
             "startCompare" -> {
+                val arguments = call.arguments as Map<*, *>
+                threshold = arguments["threshold"] as Int
+                val bitmapData = arguments["bitmap"] as ByteArray
+                srcBitmap = bytesToBitmap(bitmapData)
                 subThreadHandler.sendEmptyMessage(EVENT_COMPARE_START)
             }
             "releaseCamera" -> {
                 mCamera.releaseAll()
             }
         }
+    }
+
+    private fun bytesToBitmap(bytes:ByteArray):Bitmap? {
+        val input: InputStream?
+        val bitmap: Bitmap?
+        val options = BitmapFactory.Options()
+        options.inSampleSize = 8
+        input = ByteArrayInputStream(bytes)
+        val softRef = SoftReference(BitmapFactory.decodeStream(
+                input, null, options))
+        bitmap = softRef.get()
+        try {
+            input.close()
+        } catch (e: IOException) {
+            Log.e(TAG, "关闭流出错:${e.message}")
+        }
+        return bitmap
     }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
