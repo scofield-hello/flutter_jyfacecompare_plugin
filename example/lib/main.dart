@@ -71,8 +71,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     });
   }
 
-  Future<void> initPlatformState() async {}
-
   void _onJyFaceCompareViewCreated() {
     print("_onJyFaceCompareViewCreated");
     _controller.initFaceSdk();
