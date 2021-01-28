@@ -32,17 +32,19 @@ class JyFaceCompareView extends StatelessWidget {
   }
 }
 
-class JyFaceCompareResult{
+class JyFaceCompareResult {
   ///相似度,[0...100].
   final int similar;
+
   ///匹配的图片数据.
   final Uint8List bitmap;
   const JyFaceCompareResult(this.similar, this.bitmap);
 }
 
-class JyFaceSdkInitResult{
+class JyFaceSdkInitResult {
   ///初始化结果,为true时表示初始化成功,反之false.
   final bool result;
+
   ///提示信息,成功时为success, 失败时为错误原因.
   final String msg;
   const JyFaceSdkInitResult(this.result, this.msg);
@@ -97,22 +99,27 @@ class JyFaceCompareViewController {
   }
 
   final _onCameraOpened = StreamController<void>.broadcast();
+
   ///相机打开时触发.
   Stream<void> get onCameraOpened => _onCameraOpened.stream;
 
   final _onPreview = StreamController<void>.broadcast();
+
   ///每一帧预览画面都会触发.
   Stream<void> get onPreview => _onPreview.stream;
 
   final _onPreviewStop = StreamController<void>.broadcast();
+
   ///预览停止时触发.
   Stream<void> get onPreviewStop => _onPreviewStop.stream;
 
   final _onCameraClosed = StreamController<void>.broadcast();
+
   ///相机关闭时触发.
   Stream<void> get onCameraClosed => _onCameraClosed.stream;
 
   final _onCompareStart = StreamController<void>.broadcast();
+
   ///开始人脸比对时触发.
   Stream<void> get onCompareStart => _onCompareStart.stream;
 
@@ -151,13 +158,10 @@ class JyFaceCompareViewController {
   ///开始人脸比对.
   ///[bitmap]原始人脸图像数据.
   ///[threshold]相似度阀值，比对相似度大于该值时判断是同一个人.
-  Future<void> startCompare(Uint8List bitmap, [int threshold=80]) async {
-    assert(bitmap != null && bitmap.isNotEmpty,"bitmap 不允许为空.");
-    assert(threshold >= 0 && threshold <= 100,"theadshold 取值必须为 [0..100].");
-    _methodChannel.invokeMethod("startCompare",{
-      "bitmap": bitmap,
-      "threshold": threshold
-    });
+  Future<void> startCompare(Uint8List bitmap, [int threshold = 80]) async {
+    assert(bitmap != null && bitmap.isNotEmpty, "bitmap 不允许为空.");
+    assert(threshold >= 0 && threshold <= 100, "threshold 取值必须为 [0..100].");
+    _methodChannel.invokeMethod("startCompare", {"bitmap": bitmap, "threshold": threshold});
   }
 
   ///释放人脸识别模块.

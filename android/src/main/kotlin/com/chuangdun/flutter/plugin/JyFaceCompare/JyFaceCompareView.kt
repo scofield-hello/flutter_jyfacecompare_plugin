@@ -21,11 +21,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.io.InputStream
-import java.lang.ref.SoftReference
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -224,7 +220,7 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                 val arguments = call.arguments as Map<*, *>
                 threshold = arguments["threshold"] as Int
                 val bitmapData = arguments["bitmap"] as ByteArray
-                srcBitmap = bytesToBitmap(bitmapData)
+                srcBitmap = BitmapFactory.decodeByteArray(bitmapData, 0, bitmapData.size)
                 subThreadHandler.sendEmptyMessage(EVENT_COMPARE_START)
             }
             "releaseFace" -> {
@@ -234,23 +230,6 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                 mCamera.releaseAll()
             }
         }
-    }
-
-    private fun bytesToBitmap(bytes:ByteArray):Bitmap? {
-        val input: InputStream?
-        val bitmap: Bitmap?
-        val options = BitmapFactory.Options()
-        options.inSampleSize = 8
-        input = ByteArrayInputStream(bytes)
-        val softRef = SoftReference(BitmapFactory.decodeStream(
-                input, null, options))
-        bitmap = softRef.get()
-        try {
-            input.close()
-        } catch (e: IOException) {
-            Log.e(TAG, "关闭流出错:${e.message}")
-        }
-        return bitmap
     }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
