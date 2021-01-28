@@ -160,6 +160,11 @@ class JyFaceCompareViewController {
     });
   }
 
+  ///释放人脸识别模块.
+  Future<void> releaseFace() async {
+    _methodChannel.invokeMethod("releaseFace");
+  }
+
   ///释放所有相机资源.
   ///释放之前请调用[stopPreview],[stopCamera]关闭相机
   Future<void> releaseCamera() async {

@@ -155,7 +155,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void dispose() {
     super.dispose();
     WidgetsBinding.instance.removeObserver(this);
-    _controller.stopPreview();
+    _controller.releaseFace();
     _controller.stopCamera();
     _controller.releaseCamera();
     _controller.dispose();

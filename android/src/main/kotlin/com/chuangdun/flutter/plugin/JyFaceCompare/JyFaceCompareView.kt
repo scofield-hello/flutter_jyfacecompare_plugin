@@ -137,6 +137,7 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
     }
 
     private fun initFaceSdk(){
+        Facecompare.getInstance().setFaceType(Facecompare.SAD_FACE)
         Facecompare.getInstance().faceInit(context,
                 onFacecompareAutnResult { result: Boolean, msg: String ->
                     Log.i(TAG, "人脸比对初始化结果:$result, $msg")
@@ -225,6 +226,9 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                 val bitmapData = arguments["bitmap"] as ByteArray
                 srcBitmap = bytesToBitmap(bitmapData)
                 subThreadHandler.sendEmptyMessage(EVENT_COMPARE_START)
+            }
+            "releaseFace" -> {
+                Facecompare.getInstance().releaseFace()
             }
             "releaseCamera" -> {
                 mCamera.releaseAll()
