@@ -10,6 +10,6 @@ class JyFaceCompareViewFactory(context: Context, private val messenger: BinaryMe
     :PlatformViewFactory(StandardMessageCodec.INSTANCE){
 
     override fun create(context: Context, viewId: Int, createParams: Any): PlatformView {
-        return JyFaceCompareView(context, messenger = messenger, id = viewId, createParams = createParams)
+        return JyFaceCompareView(context, messenger = messenger, id = viewId, createParams = createParams as Map<*, *>)
     }
 }

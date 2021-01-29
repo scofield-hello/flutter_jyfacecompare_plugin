@@ -94,11 +94,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                       border: Border.all(color: Colors.black, width: 1.0),
                     ),
                     alignment: Alignment.center,
-                    height: 288,
+                    height: 320,
                     width: 240,
                     child: JyFaceCompareView(
                       controller: _controller,
                       onJyFaceCompareViewCreated: _onJyFaceCompareViewCreated,
+                      creationParams: JyFaceCompareViewParams(
+                          height: 320,
+                          width: 240,
+                          previewWidth: 640,
+                          previewHeight: 480,
+                          rotate: 0),
                     ),
                   ),
                   if (_compareResult != null)
@@ -108,7 +114,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                       ),
                       margin: EdgeInsets.symmetric(horizontal: 16.0),
                       alignment: Alignment.center,
-                      height: 288,
+                      height: 320,
                       width: 240,
                       child: Image.memory(
                         _compareResult.bitmap,

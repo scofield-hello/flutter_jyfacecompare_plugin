@@ -10,7 +10,6 @@ import android.util.Log
 import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
-import com.Interface.onFacecompareAutnResult
 import com.camera.CameraConstant
 import com.camera.JYCamera
 import com.camera.impl.CameraCallback
@@ -36,7 +35,7 @@ private const val EVENT_COMPARE_RESULT = 5
 private const val EVENT_INIT_RESULT = 6
 private const val TAG = "JyFaceCompareView"
 
-class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger, id: Int, createParams: Any) : PlatformView,
+class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger, id: Int, createParams: Map<*,*>) : PlatformView,
         MethodChannel.MethodCallHandler, EventChannel.StreamHandler{
 
 
@@ -57,12 +56,17 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
     private var srcBitmap: Bitmap? = null
     private var threshold: Int = 80
     init {
-        textureView.layoutParams = ViewGroup.LayoutParams(352, 288)
+        val width = createParams["width"] as Int
+        val height = createParams["height"] as Int
+        val previewWidth = createParams["previewWidth"] as Int
+        val previewHeight = createParams["previewHeight"] as Int
+        val rotate = createParams["rotate"] as Int
+        textureView.layoutParams = ViewGroup.LayoutParams(width, height)
         methodChannel.setMethodCallHandler(this)
         eventChannel.setStreamHandler(this)
         handlerThread.start()
         subThreadHandler = initSubThreadHandler()
-        mCamera = initCamera()
+        mCamera = initCamera(previewWidth, previewHeight, rotate)
     }
 
     private fun initSubThreadHandler():Handler{
@@ -84,11 +88,12 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
         }
     }
 
-    private fun initCamera():JYCamera{
+    private fun initCamera(previewWidth: Int, previewHeight: Int, rotate: Int):JYCamera{
         return JYCamera.Builder(context)
                 .setCameraType(CameraConstant.CAMERA_1)
-                .setCameraPreviewSize(352, 288)
-                .setCameraPictureSize(640, 480)
+                .setCameraPreviewSize(previewWidth, previewHeight)
+                .setCameraPictureSize(previewWidth, previewHeight)
+                .setCameraRotation(rotate)
                 .setCameraCallback(object : CameraCallback {
                     override fun onOpenedCamera() {
                         Log.d(TAG, "Camera opened.")
@@ -99,11 +104,14 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                         }
                     }
 
-                    override fun onPreviewFrame(data: ByteArray, bitmap: Bitmap, width: Int, height: Int) {
+                    override fun onPreviewFrame(yuvData: ByteArray, bitmap: Bitmap, width: Int, height: Int) {
                         //Log.d(TAG, "Preview onFrame: width:$width, height:$height")
                         uiHandler.post {
                             eventSink?.success(mapOf(
-                                    "event" to EVENT_PREVIEW
+                                    "event" to EVENT_PREVIEW,
+                                    "yuvData" to yuvData,
+                                    "width" to width,
+                                    "height" to height
                             ))
                         }
                         srcBitmap?.let {
@@ -134,15 +142,16 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
 
     private fun initFaceSdk(){
         Facecompare.getInstance().setFaceType(Facecompare.SAD_FACE)
-        Facecompare.getInstance().faceInit(context,
-                onFacecompareAutnResult { result: Boolean, msg: String ->
-                    Log.i(TAG, "人脸比对初始化结果:$result, $msg")
-                    uiHandler.post {  eventSink?.success(mapOf(
-                            "event" to EVENT_INIT_RESULT,
-                            "result" to result,
-                            "msg" to msg
-                    ))}
-                })
+        Facecompare.getInstance().faceInit(context){result:Boolean, msg:String ->
+            run {
+                Log.i(TAG, "人脸比对初始化结果:$result, $msg")
+                uiHandler.post {  eventSink?.success(mapOf(
+                        "event" to EVENT_INIT_RESULT,
+                        "result" to result,
+                        "msg" to msg
+                ))}
+            }
+        }
     }
 
     private fun startCompare() {

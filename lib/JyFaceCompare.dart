@@ -4,20 +4,44 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+class JyFaceCompareViewParams {
+  final int width;
+  final int height;
+  final int rotate;
+  final int previewWidth;
+  final int previewHeight;
+  const JyFaceCompareViewParams(
+      {this.width = 240,
+        this.height = 320,
+        this.rotate = 0,
+        this.previewWidth = 640,
+        this.previewHeight = 480});
+
+  Map<String, dynamic> asJson() {
+    return {
+      "width": width,
+      "height": height,
+      "rotate": rotate,
+      "previewWidth": previewWidth,
+      "previewHeight": previewHeight
+    };
+  }
+}
+
 class JyFaceCompareView extends StatelessWidget {
   final _viewType = "JyFaceCompareView";
-  final Map<String, dynamic> creationParams;
+  final JyFaceCompareViewParams creationParams;
   final JyFaceCompareViewController controller;
   final VoidCallback onJyFaceCompareViewCreated;
   const JyFaceCompareView(
-      {Key key, this.controller, this.onJyFaceCompareViewCreated, this.creationParams = const {}})
+      {Key key, this.controller, this.onJyFaceCompareViewCreated, this.creationParams = const JyFaceCompareViewParams()})
       : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return AndroidView(
         viewType: _viewType,
-        creationParams: creationParams,
+        creationParams: creationParams.asJson(),
         creationParamsCodec: const StandardMessageCodec(),
         onPlatformViewCreated: _onPlatformViewCreated);
   }
@@ -50,6 +74,13 @@ class JyFaceSdkInitResult {
   const JyFaceSdkInitResult(this.result, this.msg);
 }
 
+class JyFaceComparePreviewFrame{
+  final int height;
+  final int width;
+  final Uint8List yuvData;
+  const JyFaceComparePreviewFrame(this.yuvData, this.width, this.height);
+}
+
 class JyFaceCompareEventType {
   static const EVENT_CAMERA_OPENED = 0;
   static const EVENT_PREVIEW = 1;
@@ -72,7 +103,7 @@ class JyFaceCompareViewController {
         _onCameraOpened.add(null);
         break;
       case JyFaceCompareEventType.EVENT_PREVIEW:
-        _onPreview.add(null);
+        _onPreview.add(JyFaceComparePreviewFrame(event['yuvData'], event['width'], event['height']));
         break;
       case JyFaceCompareEventType.EVENT_PREVIEW_STOP:
         _onPreviewStop.add(null);
@@ -103,10 +134,10 @@ class JyFaceCompareViewController {
   ///相机打开时触发.
   Stream<void> get onCameraOpened => _onCameraOpened.stream;
 
-  final _onPreview = StreamController<void>.broadcast();
+  final _onPreview = StreamController<JyFaceComparePreviewFrame>.broadcast();
 
   ///每一帧预览画面都会触发.
-  Stream<void> get onPreview => _onPreview.stream;
+  Stream<JyFaceComparePreviewFrame> get onPreview => _onPreview.stream;
 
   final _onPreviewStop = StreamController<void>.broadcast();
 
