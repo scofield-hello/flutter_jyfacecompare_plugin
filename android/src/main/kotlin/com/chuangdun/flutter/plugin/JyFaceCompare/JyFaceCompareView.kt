@@ -3,9 +3,10 @@ package com.chuangdun.flutter.plugin.JyFaceCompare
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.MediaPlayer
 import android.os.Handler
-import android.os.HandlerThread
-import android.os.Message
+/*import android.os.HandlerThread
+import android.os.Message*/
 import android.util.Log
 import android.view.TextureView
 import android.view.View
@@ -21,6 +22,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
 import java.io.ByteArrayOutputStream
+import java.lang.Exception
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -43,18 +45,20 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
     private val methodChannel = MethodChannel(messenger, "${VIEW_REGISTRY_NAME}_$id")
     private var eventChannel = EventChannel(messenger, "${VIEW_EVENT_REGISTRY_NAME}_$id")
     private val threadFactory = ThreadFactoryBuilder().setNameFormat("JyFaceComparePool_%d").build()
-    private val mBlockingQueue = LinkedBlockingQueue<CompareTask>(1)
+    //private val mBlockingQueue = LinkedBlockingQueue<CompareTask>(1)
     private val threadPool = ThreadPoolExecutor(
             1, 1, 0L, TimeUnit.MILLISECONDS,
             LinkedBlockingQueue<Runnable>(), threadFactory)
-    private val service = MoreExecutors.listeningDecorator(threadPool)
+    //private val service = MoreExecutors.listeningDecorator(threadPool)
     private val uiHandler = Handler()
-    private val handlerThread = HandlerThread("JyFaceCompareHandlerThread")
-    private val subThreadHandler:Handler
+    //private val handlerThread = HandlerThread("JyFaceCompareHandlerThread")
+    //private val subThreadHandler:Handler
     private var eventSink: EventChannel.EventSink? = null
+    private var mMediaPlayer:MediaPlayer? = null
     private val mCamera: JYCamera
-    private var srcBitmap: Bitmap? = null
-    private var threshold: Int = 80
+    /*private var srcBitmap: Bitmap? = null
+    private var threshold: Int = 80*/
+    private var mCompareStart = false
     init {
         val width = createParams["width"] as Int
         val height = createParams["height"] as Int
@@ -64,12 +68,12 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
         textureView.layoutParams = ViewGroup.LayoutParams(width, height)
         methodChannel.setMethodCallHandler(this)
         eventChannel.setStreamHandler(this)
-        handlerThread.start()
-        subThreadHandler = initSubThreadHandler()
+        //handlerThread.start()
+        //subThreadHandler = initSubThreadHandler()
         mCamera = initCamera(previewWidth, previewHeight, rotate)
     }
 
-    private fun initSubThreadHandler():Handler{
+    /*private fun initSubThreadHandler():Handler{
         return object : Handler(handlerThread.looper) {
             override fun handleMessage(msg: Message) {
                 super.handleMessage(msg)
@@ -86,7 +90,7 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                 }
             }
         }
-    }
+    }*/
 
     private fun initCamera(previewWidth: Int, previewHeight: Int, rotate: Int):JYCamera{
         return JYCamera.Builder(context)
@@ -114,9 +118,9 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                                     "height" to height
                             ))
                         }
-                        srcBitmap?.let {
+                        /*srcBitmap?.let {
                             mBlockingQueue.offer(CompareTask(it, bitmap))
-                        }
+                        }*/
                     }
 
                     override fun onClosedCamera() {
@@ -154,7 +158,61 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
         }
     }
 
-    private fun startCompare() {
+    private fun startCompare(threshold:Int, faceBitmapData:ByteArray){
+        if (mCompareStart){
+            Log.w(TAG, "已在比对之中...")
+            return
+        }
+        mCompareStart = true
+        uiHandler.post {
+            eventSink?.success(mapOf(
+                    "event" to EVENT_COMPARE_START
+            ))
+        }
+        val detectTask = Runnable {
+            playSound(R.raw.start_face_compare, 4000)
+            val srcBitmap = BitmapFactory.decodeByteArray(faceBitmapData, 0, faceBitmapData.size)
+            while (mCompareStart){
+                try {
+                    Thread.sleep(1000)
+                }catch (e: InterruptedException){
+                    Log.e(TAG, "线程睡眠1000毫秒失败.")
+                }
+                val bitmap = mCamera.takePicture()
+                val timeStart = System.currentTimeMillis()
+                val similar = Facecompare.getInstance().faceVerify(srcBitmap, bitmap)
+                Log.d(TAG, "compare similar: $similar, time: " + (System.currentTimeMillis() - timeStart))
+                if (similar >= threshold){
+                    mCompareStart = false
+                    playSound(R.raw.face_verified, 1500)
+                    val outputStream = ByteArrayOutputStream()
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                    uiHandler.post {  eventSink?.success(mapOf(
+                            "event" to EVENT_COMPARE_RESULT,
+                            "similar" to similar,
+                            "bitmap" to outputStream.toByteArray()
+                    ))}
+                }
+            }
+        }
+        threadPool.execute(detectTask)
+    }
+
+    private fun playSound(resid:Int, waitMillis:Long){
+        try {
+            mMediaPlayer = MediaPlayer.create(context, resid)
+            mMediaPlayer!!.start()
+            Thread.sleep(waitMillis)
+            mMediaPlayer!!.stop()
+            mMediaPlayer!!.release()
+        }catch (e: InterruptedException){
+            Log.e(TAG, "线程睡眠waitMillis毫秒失败.${e.message}")
+        }catch (e: Exception) {
+            Log.e(TAG, "MediaPlayer错误.${e.message}")
+        }
+    }
+
+    /*private fun startCompare() {
         try {
             mBlockingQueue.clear()
             val compareTask: CompareTask = mBlockingQueue.take()
@@ -186,7 +244,7 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
             Log.e(TAG, "人脸比对异常", e)
             subThreadHandler.sendEmptyMessage(EVENT_COMPARE_START)
         }
-    }
+    }*/
 
 
     override fun getView(): View {
@@ -204,10 +262,9 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
 
     override fun dispose() {
         Log.i(TAG, "JyFaceCompareView:dispose")
-        if (!service.isTerminated){
-            service.shutdownNow()
+        if (!threadPool.isShutdown){
+            threadPool.shutdownNow()
         }
-        handlerThread.quit()
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -227,10 +284,16 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
             }
             "startCompare" -> {
                 val arguments = call.arguments as Map<*, *>
-                threshold = arguments["threshold"] as Int
-                val bitmapData = arguments["bitmap"] as ByteArray
-                srcBitmap = BitmapFactory.decodeByteArray(bitmapData, 0, bitmapData.size)
-                subThreadHandler.sendEmptyMessage(EVENT_COMPARE_START)
+                val threshold = arguments["threshold"] as Int
+                val faceBitmapData = arguments["bitmap"] as ByteArray
+                startCompare(threshold, faceBitmapData)
+                /*srcBitmap = BitmapFactory.decodeByteArray(bitmapData, 0, bitmapData.size)
+                subThreadHandler.sendEmptyMessage(EVENT_COMPARE_START)*/
+            }
+            "stopCompare" -> {
+                mCompareStart = false
+                /*srcBitmap = BitmapFactory.decodeByteArray(bitmapData, 0, bitmapData.size)
+                subThreadHandler.sendEmptyMessage(EVENT_COMPARE_START)*/
             }
             "releaseFace" -> {
                 Facecompare.getInstance().releaseFace()

@@ -195,6 +195,11 @@ class JyFaceCompareViewController {
     _methodChannel.invokeMethod("startCompare", {"bitmap": bitmap, "threshold": threshold});
   }
 
+  ///停止人脸识别.
+  Future<void> stopCompare() async {
+    _methodChannel.invokeMethod("stopCompare");
+  }
+
   ///释放人脸识别模块.
   Future<void> releaseFace() async {
     _methodChannel.invokeMethod("releaseFace");
