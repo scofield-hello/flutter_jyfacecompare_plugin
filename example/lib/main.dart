@@ -15,14 +15,16 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   JyFaceCompareViewController _controller;
+  JyFaceComparePlugin _plugin;
   String _currentState = "初始化";
   JyFaceCompareResult _compareResult;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _plugin = JyFaceComparePlugin();
     _controller = JyFaceCompareViewController();
-    _controller.onInitSdkResult.listen((initResult) {
+    _plugin.onInitSdkResult.listen((initResult) {
       print("onInitSdkResult");
       if (initResult.result) {
         Future.delayed(Duration(milliseconds: 500), () {
@@ -73,7 +75,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   void _onJyFaceCompareViewCreated() {
     print("_onJyFaceCompareViewCreated");
-    _controller.initFaceSdk();
+    _plugin.initFaceSdk();
   }
 
   @override
@@ -162,9 +164,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _controller.stopCompare();
-    _controller.releaseFace();
     _controller.stopCamera();
     _controller.releaseCamera();
     _controller.dispose();
+    _plugin.releaseFace();
+    _plugin.dispose();
   }
 }

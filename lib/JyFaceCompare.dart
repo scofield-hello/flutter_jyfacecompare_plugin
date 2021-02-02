@@ -12,10 +12,10 @@ class JyFaceCompareViewParams {
   final int previewHeight;
   const JyFaceCompareViewParams(
       {this.width = 240,
-        this.height = 320,
-        this.rotate = 0,
-        this.previewWidth = 640,
-        this.previewHeight = 480});
+      this.height = 320,
+      this.rotate = 0,
+      this.previewWidth = 640,
+      this.previewHeight = 480});
 
   Map<String, dynamic> asJson() {
     return {
@@ -34,7 +34,10 @@ class JyFaceCompareView extends StatelessWidget {
   final JyFaceCompareViewController controller;
   final VoidCallback onJyFaceCompareViewCreated;
   const JyFaceCompareView(
-      {Key key, this.controller, this.onJyFaceCompareViewCreated, this.creationParams = const JyFaceCompareViewParams()})
+      {Key key,
+      this.controller,
+      this.onJyFaceCompareViewCreated,
+      this.creationParams = const JyFaceCompareViewParams()})
       : super(key: key);
 
   @override
@@ -74,7 +77,7 @@ class JyFaceSdkInitResult {
   const JyFaceSdkInitResult(this.result, this.msg);
 }
 
-class JyFaceComparePreviewFrame{
+class JyFaceComparePreviewFrame {
   final int height;
   final int width;
   final Uint8List yuvData;
@@ -88,7 +91,47 @@ class JyFaceCompareEventType {
   static const EVENT_CAMERA_CLOSED = 3;
   static const EVENT_COMPARE_START = 4;
   static const EVENT_COMPARE_RESULT = 5;
-  static const EVENT_INIT_RESULT = 6;
+  //static const EVENT_INIT_RESULT = 6;
+}
+
+class JyFaceComparePlugin {
+  static JyFaceComparePlugin _instance;
+
+  static const _methodChannel = const MethodChannel("JyFaceCompareSdk");
+  static const _eventChannel = const EventChannel("JyFaceCompareSdkEvent");
+
+  factory JyFaceComparePlugin() => _instance ??= JyFaceComparePlugin._();
+
+  JyFaceComparePlugin._() {
+    _eventChannel.receiveBroadcastStream().listen(_onEvent);
+  }
+
+  void _onEvent(dynamic event) {
+    if (!_onInitSdkResult.isClosed) {
+      _onInitSdkResult.add(JyFaceSdkInitResult(event['result'], event['msg']));
+    }
+  }
+
+  final _onInitSdkResult = StreamController<JyFaceSdkInitResult>.broadcast();
+
+  ///初始化结果返回时触发.
+  Stream<JyFaceSdkInitResult> get onInitSdkResult => _onInitSdkResult.stream;
+
+  ///初始化人脸比对SDK.
+  ///初始化结果在[onInitSdkResult]中返回.
+  Future<void> initFaceSdk() async {
+    _methodChannel.invokeMethod("initFaceSdk");
+  }
+
+  ///释放人脸识别模块.
+  Future<void> releaseFace() async {
+    _methodChannel.invokeMethod("releaseFace");
+  }
+
+  void dispose() {
+    _onInitSdkResult.close();
+    _instance = null;
+  }
 }
 
 class JyFaceCompareViewController {
@@ -100,40 +143,43 @@ class JyFaceCompareViewController {
   void _onEvent(dynamic event) {
     switch (event['event']) {
       case JyFaceCompareEventType.EVENT_CAMERA_OPENED:
-        if(!_onCameraOpened.isClosed){
+        if (!_onCameraOpened.isClosed) {
           _onCameraOpened.add(null);
         }
         break;
       case JyFaceCompareEventType.EVENT_PREVIEW:
-        if(!_onPreview.isClosed){
-          _onPreview.add(JyFaceComparePreviewFrame(event['yuvData'], event['width'], event['height']));
+        if (!_onPreview.isClosed) {
+          _onPreview
+              .add(JyFaceComparePreviewFrame(event['yuvData'], event['width'], event['height']));
         }
         break;
       case JyFaceCompareEventType.EVENT_PREVIEW_STOP:
-        if(!_onPreviewStop.isClosed){
+        if (!_onPreviewStop.isClosed) {
           _onPreviewStop.add(null);
         }
         break;
       case JyFaceCompareEventType.EVENT_CAMERA_CLOSED:
-        if(!_onCameraClosed.isClosed){
+        if (!_onCameraClosed.isClosed) {
           _onCameraClosed.add(null);
         }
         break;
       case JyFaceCompareEventType.EVENT_COMPARE_START:
-        if(!_onCompareStart.isClosed){
+        if (!_onCompareStart.isClosed) {
           _onCompareStart.add(null);
         }
         break;
       case JyFaceCompareEventType.EVENT_COMPARE_RESULT:
-        if(!_onCompareResult.isClosed){
+        if (!_onCompareResult.isClosed) {
           _onCompareResult.add(JyFaceCompareResult(event['similar'], event['bitmap']));
         }
         break;
-      case JyFaceCompareEventType.EVENT_INIT_RESULT:
-        if(!_onInitSdkResult.isClosed){
+      default:
+        break;
+      /*case JyFaceCompareEventType.EVENT_INIT_RESULT:
+        if (!_onInitSdkResult.isClosed) {
           _onInitSdkResult.add(JyFaceSdkInitResult(event['result'], event['msg']));
         }
-        break;
+        break;*/
     }
   }
 
@@ -173,16 +219,16 @@ class JyFaceCompareViewController {
   ///比对结果返回时触发.
   Stream<JyFaceCompareResult> get onCompareResult => _onCompareResult.stream;
 
-  final _onInitSdkResult = StreamController<JyFaceSdkInitResult>.broadcast();
+  /*final _onInitSdkResult = StreamController<JyFaceSdkInitResult>.broadcast();
 
   ///初始化结果返回时触发.
-  Stream<JyFaceSdkInitResult> get onInitSdkResult => _onInitSdkResult.stream;
+  Stream<JyFaceSdkInitResult> get onInitSdkResult => _onInitSdkResult.stream;*/
 
   ///初始化人脸比对SDK.
   ///初始化结果在[onInitSdkResult]中返回.
-  Future<void> initFaceSdk() async {
+  /*Future<void> initFaceSdk() async {
     _methodChannel.invokeMethod("initFaceSdk");
-  }
+  }*/
 
   ///开始预览画面,需要调用两次.
   Future<void> startPreview() async {
@@ -214,11 +260,6 @@ class JyFaceCompareViewController {
     _methodChannel.invokeMethod("stopCompare");
   }
 
-  ///释放人脸识别模块.
-  Future<void> releaseFace() async {
-    _methodChannel.invokeMethod("releaseFace");
-  }
-
   ///释放所有相机资源.
   ///释放之前请调用[stopPreview],[stopCamera]关闭相机
   Future<void> releaseCamera() async {
@@ -226,7 +267,7 @@ class JyFaceCompareViewController {
   }
 
   void dispose() {
-    _onInitSdkResult.close();
+    //_onInitSdkResult.close();
     _onCameraClosed.close();
     _onCameraOpened.close();
     _onPreview.close();

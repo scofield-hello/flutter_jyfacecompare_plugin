@@ -5,7 +5,7 @@ A new flutter plugin project.
 ## Getting Started
 
 ```dart
-
+  JyFaceComparePlugin _plugin;
   JyFaceCompareViewController _controller;
   String _currentState = "初始化";
   JyFaceCompareResult _compareResult;
@@ -13,8 +13,9 @@ A new flutter plugin project.
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _plugin = JyFaceComparePlugin();
     _controller = JyFaceCompareViewController();
-    _controller.onInitSdkResult.listen((initResult) {
+    _plugin.onInitSdkResult.listen((initResult) {
       print("onInitSdkResult");
       if (initResult.result) {
         Future.delayed(Duration(milliseconds: 500), () {
@@ -63,6 +64,10 @@ A new flutter plugin project.
     });
   }
 
+  void _onJyFaceCompareViewCreated() {
+    print("_onJyFaceCompareViewCreated");
+    _plugin.initFaceSdk();
+  }
 
   @override
     void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -86,11 +91,12 @@ A new flutter plugin project.
     @override
     void dispose() {
       super.dispose();
-      WidgetsBinding.instance.removeObserver(this);
-      _controller.releaseFace();
+      _controller.stopCompare();
       _controller.stopCamera();
       _controller.releaseCamera();
       _controller.dispose();
+      _plugin.releaseFace();
+      _plugin.dispose();
     }
 
   ///创建预览视图

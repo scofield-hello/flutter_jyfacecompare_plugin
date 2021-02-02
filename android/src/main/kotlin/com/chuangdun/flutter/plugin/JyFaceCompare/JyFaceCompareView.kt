@@ -13,7 +13,6 @@ import com.camera.CameraConstant
 import com.camera.JYCamera
 import com.camera.impl.CameraCallback
 import com.common.Facecompare
-import com.google.common.util.concurrent.*
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -31,7 +30,6 @@ private const val EVENT_PREVIEW_STOP = 2
 private const val EVENT_CAMERA_CLOSED = 3
 private const val EVENT_COMPARE_START = 4
 private const val EVENT_COMPARE_RESULT = 5
-private const val EVENT_INIT_RESULT = 6
 private const val TAG = "JyFaceCompareView"
 
 class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger, id: Int, createParams: Map<*, *>) : PlatformView,
@@ -41,10 +39,9 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
     private val textureView: TextureView = TextureView(context)
     private val methodChannel = MethodChannel(messenger, "${VIEW_REGISTRY_NAME}_$id")
     private var eventChannel = EventChannel(messenger, "${VIEW_EVENT_REGISTRY_NAME}_$id")
-    private val threadFactory = ThreadFactoryBuilder().setNameFormat("JyFaceComparePool_%d").build()
     private val threadPool = ThreadPoolExecutor(
             1, 1, 0L, TimeUnit.MILLISECONDS,
-            LinkedBlockingQueue<Runnable>(), threadFactory)
+            LinkedBlockingQueue<Runnable>())
     private val uiHandler = Handler()
     private var eventSink: EventChannel.EventSink? = null
     private var mMediaPlayer:MediaPlayer? = null
@@ -109,20 +106,6 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                     }
                 })
                 .build()
-    }
-
-    private fun initFaceSdk(){
-        Facecompare.getInstance().setFaceType(Facecompare.SAD_FACE)
-        Facecompare.getInstance().faceInit(context){ result: Boolean, msg: String ->
-            run {
-                Log.i(TAG, "人脸比对初始化结果:$result, $msg")
-                uiHandler.post {  eventSink?.success(mapOf(
-                        "event" to EVENT_INIT_RESULT,
-                        "result" to result,
-                        "msg" to msg
-                ))}
-            }
-        }
     }
 
     private fun startCompare(threshold: Int, faceBitmapData: ByteArray){
@@ -202,9 +185,6 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         Log.i(TAG, "JyFaceCompareView:onMethodCall:${call.method}")
         when(call.method){
-            "initFaceSdk" -> {
-                initFaceSdk()
-            }
             "startPreview" -> {
                 mCamera.doStartPreview(1, textureView)
             }
@@ -222,9 +202,6 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
             }
             "stopCompare" -> {
                 mCompareStart = false
-            }
-            "releaseFace" -> {
-                Facecompare.getInstance().releaseFace()
             }
             "releaseCamera" -> {
                 mCamera.releaseAll()
