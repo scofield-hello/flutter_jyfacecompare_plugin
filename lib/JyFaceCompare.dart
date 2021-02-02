@@ -100,25 +100,39 @@ class JyFaceCompareViewController {
   void _onEvent(dynamic event) {
     switch (event['event']) {
       case JyFaceCompareEventType.EVENT_CAMERA_OPENED:
-        _onCameraOpened.add(null);
+        if(!_onCameraOpened.isClosed){
+          _onCameraOpened.add(null);
+        }
         break;
       case JyFaceCompareEventType.EVENT_PREVIEW:
-        _onPreview.add(JyFaceComparePreviewFrame(event['yuvData'], event['width'], event['height']));
+        if(!_onPreview.isClosed){
+          _onPreview.add(JyFaceComparePreviewFrame(event['yuvData'], event['width'], event['height']));
+        }
         break;
       case JyFaceCompareEventType.EVENT_PREVIEW_STOP:
-        _onPreviewStop.add(null);
+        if(!_onPreviewStop.isClosed){
+          _onPreviewStop.add(null);
+        }
         break;
       case JyFaceCompareEventType.EVENT_CAMERA_CLOSED:
-        _onCameraClosed.add(null);
+        if(!_onCameraClosed.isClosed){
+          _onCameraClosed.add(null);
+        }
         break;
       case JyFaceCompareEventType.EVENT_COMPARE_START:
-        _onCompareStart.add(null);
+        if(!_onCompareStart.isClosed){
+          _onCompareStart.add(null);
+        }
         break;
       case JyFaceCompareEventType.EVENT_COMPARE_RESULT:
-        _onCompareResult.add(JyFaceCompareResult(event['similar'], event['bitmap']));
+        if(!_onCompareResult.isClosed){
+          _onCompareResult.add(JyFaceCompareResult(event['similar'], event['bitmap']));
+        }
         break;
       case JyFaceCompareEventType.EVENT_INIT_RESULT:
-        _onInitSdkResult.add(JyFaceSdkInitResult(event['result'], event['msg']));
+        if(!_onInitSdkResult.isClosed){
+          _onInitSdkResult.add(JyFaceSdkInitResult(event['result'], event['msg']));
+        }
         break;
     }
   }
