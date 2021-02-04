@@ -29,7 +29,8 @@ private const val EVENT_PREVIEW = 1
 private const val EVENT_PREVIEW_STOP = 2
 private const val EVENT_CAMERA_CLOSED = 3
 private const val EVENT_COMPARE_START = 4
-private const val EVENT_COMPARE_RESULT = 5
+private const val EVENT_COMPARE_MATCHED = 5
+private const val EVENT_COMPARE_UNMATCHED = 6
 private const val TAG = "JyFaceCompareView"
 
 class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger, id: Int, createParams: Map<*, *>) : PlatformView,
@@ -138,9 +139,14 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                     val outputStream = ByteArrayOutputStream()
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
                     uiHandler.post {  eventSink?.success(mapOf(
-                            "event" to EVENT_COMPARE_RESULT,
+                            "event" to EVENT_COMPARE_MATCHED,
                             "similar" to similar,
                             "bitmap" to outputStream.toByteArray()
+                    ))}
+                }else{
+                    uiHandler.post {  eventSink?.success(mapOf(
+                            "event" to EVENT_COMPARE_UNMATCHED,
+                            "similar" to similar
                     ))}
                 }
             }

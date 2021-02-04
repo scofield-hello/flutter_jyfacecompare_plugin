@@ -64,11 +64,18 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         _currentState = "开始人脸比对";
       });
     });
-    _controller.onCompareResult.listen((compareResult) {
-      print("onCompareResult");
+    _controller.onCompareMatched.listen((compareResult) {
+      print("onCompareMatched");
       setState(() {
         _compareResult = compareResult;
-        _currentState = "人脸比对完成,相似度:${compareResult.similar}";
+        _currentState = "人脸比对通过,相似度:${compareResult.similar}";
+      });
+    });
+    _controller.onCompareUnmatched.listen((compareResult) {
+      print("onCompareUnmatched");
+      setState(() {
+        _compareResult = compareResult;
+        _currentState = "人脸比对不通过,相似度:${compareResult.similar}";
       });
     });
   }
@@ -109,7 +116,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                           rotate: 0),
                     ),
                   ),
-                  if (_compareResult != null)
+                  if (_compareResult != null && _compareResult.bitmap != null)
                     Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.black, width: 1.0),

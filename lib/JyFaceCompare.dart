@@ -90,8 +90,8 @@ class JyFaceCompareEventType {
   static const EVENT_PREVIEW_STOP = 2;
   static const EVENT_CAMERA_CLOSED = 3;
   static const EVENT_COMPARE_START = 4;
-  static const EVENT_COMPARE_RESULT = 5;
-  //static const EVENT_INIT_RESULT = 6;
+  static const EVENT_COMPARE_MATCHED = 5;
+  static const EVENT_COMPARE_UNMATCHED = 6;
 }
 
 class JyFaceComparePlugin {
@@ -168,18 +168,18 @@ class JyFaceCompareViewController {
           _onCompareStart.add(null);
         }
         break;
-      case JyFaceCompareEventType.EVENT_COMPARE_RESULT:
-        if (!_onCompareResult.isClosed) {
-          _onCompareResult.add(JyFaceCompareResult(event['similar'], event['bitmap']));
+      case JyFaceCompareEventType.EVENT_COMPARE_MATCHED:
+        if (!_onCompareMatched.isClosed) {
+          _onCompareMatched.add(JyFaceCompareResult(event['similar'], event['bitmap']));
+        }
+        break;
+      case JyFaceCompareEventType.EVENT_COMPARE_UNMATCHED:
+        if (!_onCompareUnmatched.isClosed) {
+          _onCompareUnmatched.add(JyFaceCompareResult(event['similar'], null));
         }
         break;
       default:
         break;
-      /*case JyFaceCompareEventType.EVENT_INIT_RESULT:
-        if (!_onInitSdkResult.isClosed) {
-          _onInitSdkResult.add(JyFaceSdkInitResult(event['result'], event['msg']));
-        }
-        break;*/
     }
   }
 
@@ -214,21 +214,16 @@ class JyFaceCompareViewController {
   ///开始人脸比对时触发.
   Stream<void> get onCompareStart => _onCompareStart.stream;
 
-  final _onCompareResult = StreamController<JyFaceCompareResult>.broadcast();
+  final _onCompareMatched = StreamController<JyFaceCompareResult>.broadcast();
 
-  ///比对结果返回时触发.
-  Stream<JyFaceCompareResult> get onCompareResult => _onCompareResult.stream;
+  ///比对通过返回时触发.
+  Stream<JyFaceCompareResult> get onCompareMatched => _onCompareMatched.stream;
 
-  /*final _onInitSdkResult = StreamController<JyFaceSdkInitResult>.broadcast();
+  final _onCompareUnmatched = StreamController<JyFaceCompareResult>.broadcast();
 
-  ///初始化结果返回时触发.
-  Stream<JyFaceSdkInitResult> get onInitSdkResult => _onInitSdkResult.stream;*/
+  ///比对不通过返回时触发.
+  Stream<JyFaceCompareResult> get onCompareUnmatched => _onCompareUnmatched.stream;
 
-  ///初始化人脸比对SDK.
-  ///初始化结果在[onInitSdkResult]中返回.
-  /*Future<void> initFaceSdk() async {
-    _methodChannel.invokeMethod("initFaceSdk");
-  }*/
 
   ///开始预览画面,需要调用两次.
   Future<void> startPreview() async {
@@ -267,12 +262,12 @@ class JyFaceCompareViewController {
   }
 
   void dispose() {
-    //_onInitSdkResult.close();
     _onCameraClosed.close();
     _onCameraOpened.close();
     _onPreview.close();
     _onPreviewStop.close();
     _onCompareStart.close();
-    _onCompareResult.close();
+    _onCompareMatched.close();
+    _onCompareUnmatched.close();
   }
 }
