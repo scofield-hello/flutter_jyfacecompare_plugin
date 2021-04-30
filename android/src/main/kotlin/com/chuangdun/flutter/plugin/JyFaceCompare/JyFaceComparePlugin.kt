@@ -61,7 +61,7 @@ class JyFaceComparePlugin: FlutterPlugin,MethodChannel.MethodCallHandler, EventC
   }
 
   private fun initFaceSdk(){
-    Facecompare.getInstance().setFaceType(Facecompare.SAD_FACE)
+    //Facecompare.getInstance().setFaceType(Facecompare.SAD_FACE)
     Facecompare.getInstance().faceInit(context){ result: Boolean, msg: String ->
       run {
         Log.i(TAG, "人脸比对初始化结果:$result, $msg")
