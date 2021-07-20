@@ -54,7 +54,9 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
         val previewWidth = createParams["previewWidth"] as Int
         val previewHeight = createParams["previewHeight"] as Int
         val rotate = createParams["rotate"] as Int
-        textureView.layoutParams = ViewGroup.LayoutParams(width, height)
+        textureView.layoutParams = ViewGroup.LayoutParams(
+            dp2px(context,width.toFloat()),
+            dp2px(context,height.toFloat()))
         methodChannel.setMethodCallHandler(this)
         eventChannel.setStreamHandler(this)
         mCamera = initCamera(previewWidth, previewHeight, rotate)
@@ -66,6 +68,7 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
                 .setCameraPreviewSize(previewWidth, previewHeight)
                 .setCameraPictureSize(previewWidth, previewHeight)
                 .setCameraRotation(rotate)
+                .mirror()
                 .setCameraCallback(object : CameraCallback {
                     override fun onOpenedCamera() {
                         Log.d(TAG, "Camera opened.")
@@ -192,7 +195,7 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
         Log.i(TAG, "JyFaceCompareView:onMethodCall:${call.method}")
         when(call.method){
             "startPreview" -> {
-                mCamera.doStartPreview(1, textureView)
+                mCamera.doStartPreview(CameraDecide.faceCompareId, textureView)
             }
             "stopPreview" -> {
                 mCamera.doStopPreview()
@@ -221,5 +224,10 @@ class JyFaceCompareView(private val context: Context, messenger: BinaryMessenger
 
     override fun onCancel(arguments: Any?) {
         this.eventSink = null
+    }
+
+    private fun dp2px(context: Context, dp: Float): Int {
+        val scale = context.resources.displayMetrics.density
+        return (dp * scale + 0.5f).toInt()
     }
 }
